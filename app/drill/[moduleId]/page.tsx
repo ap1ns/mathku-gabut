@@ -14,9 +14,18 @@ function DrillContent() {
   const moduleId = params?.moduleId as string;
   const { progress, completeTable } = useMathStore();
 
+  const isAddSub = moduleId === "penjumlahan" || moduleId === "pengurangan";
+  const levelsMapping = ["satuan", "puluhan", "ratus", "ribuan", "ratus-ribuan"];
+  const levelNames = ["Satuan", "Puluhan", "Ratusan", "Ribuan", "Ratus Ribuan"];
+
   const tableParam = searchParams?.get("table");
   const parsedTable = tableParam ? parseInt(tableParam) : NaN;
   const tableNum = !isNaN(parsedTable) ? parsedTable : undefined;
+
+  const levelParam = searchParams?.get("level");
+  const parsedLevel = levelParam ? parseInt(levelParam) : NaN;
+  const levelNum = !isNaN(parsedLevel) ? parsedLevel : undefined;
+
   const rangeParam = searchParams?.get("range") || undefined;
 
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -32,16 +41,26 @@ function DrillContent() {
 
   useEffect(() => {
     setMounted(true);
-    const q = tableNum !== undefined
-      ? generateQuestions(moduleId, 10, tableNum, rangeParam)
-      : generateQuestions(moduleId, 50, undefined, rangeParam);
+    let q: Question[] = [];
+    if (isAddSub) {
+      if (levelNum !== undefined) {
+        const range = levelsMapping[levelNum - 1] || "satuan";
+        q = generateQuestions(moduleId, 10, undefined, range);
+      } else {
+        q = generateQuestions(moduleId, 50, undefined, "all");
+      }
+    } else {
+      q = tableNum !== undefined
+        ? generateQuestions(moduleId, 10, tableNum, rangeParam)
+        : generateQuestions(moduleId, 50, undefined, rangeParam);
+    }
     setQuestions(q);
     setCurrentIndex(0);
     setCorrectCount(0);
     setDone(false);
     setFeedback("idle");
     setInputValue("");
-  }, [moduleId, tableNum]);
+  }, [moduleId, tableNum, levelNum]);
 
   useEffect(() => {
     if (mounted && inputRef.current && !done && feedback === "idle") {
@@ -65,11 +84,16 @@ function DrillContent() {
 
   // Bypass check for random mode
   const mProgress = progress[moduleId];
-  const allTablesCompleted = mProgress?.completedTables?.length === 10;
-  if (tableNum === undefined && !allTablesCompleted) {
+  const maxLimit = isAddSub ? 5 : 10;
+  const allCompleted = (mProgress?.completedTables?.length ?? 0) === maxLimit;
+  const isRandomMode = isAddSub ? (levelNum === undefined) : (tableNum === undefined);
+
+  if (isRandomMode && !allCompleted) {
     return (
       <div className="text-center py-12 flex flex-col items-center gap-4">
-        <p className="text-slate-400 text-sm">Latihan acak terkunci. Selesaikan tabel 1-10 terlebih dahulu.</p>
+        <p className="text-slate-400 text-sm">
+          Latihan acak terkunci. Selesaikan semua {isAddSub ? "level" : "tabel 1-10"} terlebih dahulu.
+        </p>
         <Link href={`/module/${moduleId}`} className="text-blue-400 underline text-sm">Kembali ke Modul</Link>
       </div>
     );
@@ -104,33 +128,41 @@ function DrillContent() {
       setCurrentIndex(prev => prev + 1);
     } else {
       setDone(true);
-      // Check if table mastered (100% for sequential)
-      if (tableNum !== undefined) {
-        const finalCorrect = correctCount + (feedback === "correct" ? 0 : 0);
-        // We already incremented correctCount before calling advance for correct
-        // The correctCount at this point reflects answers up to currentIndex
-        // But since we check after the last answer, we need to account for the last one
-      }
     }
   };
 
   // Done view
   if (done) {
-    // Recalculate - correctCount was set before advance for the last question
     const accuracy = Math.round((correctCount / questions.length) * 100);
-    const isSeq = tableNum !== undefined;
     const passed = accuracy === 100;
 
-    // Mark table complete if passed sequential
-    if (isSeq && passed) {
-      completeTable(moduleId, tableNum);
+    if (isAddSub) {
+      if (levelNum !== undefined && passed) {
+        completeTable(moduleId, levelNum);
+      }
+    } else {
+      if (tableNum !== undefined && passed) {
+        completeTable(moduleId, tableNum);
+      }
     }
+
+    const titleText = isAddSub
+      ? (levelNum !== undefined ? `Level ${levelNames[levelNum - 1]} Selesai` : "Latihan Acak Selesai")
+      : (tableNum !== undefined ? `Tabel ${tableNum} Selesai` : "Latihan Acak Selesai");
+
+    const feedbackText = isAddSub
+      ? (levelNum !== undefined
+          ? (passed ? `✅ Level ${levelNames[levelNum - 1]} berhasil diselesaikan!` : "Anda perlu menjawab semua benar (100%) untuk menyelesaikan level ini.")
+          : "")
+      : (tableNum !== undefined
+          ? (passed ? `✅ Tabel ${tableNum} berhasil dihafal!` : "Anda perlu menjawab semua benar (100%) untuk menandai tabel ini selesai.")
+          : "");
 
     return (
       <div className="max-w-md mx-auto py-8 flex flex-col gap-6">
         <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl text-center flex flex-col gap-4">
           <h2 className="text-lg font-bold text-slate-200">
-            {isSeq ? `Tabel ${tableNum} Selesai` : "Latihan Acak Selesai"}
+            {titleText}
           </h2>
 
           <div className="flex justify-center gap-8">
@@ -144,15 +176,23 @@ function DrillContent() {
             </div>
           </div>
 
-          {isSeq && !passed && (
-            <p className="text-xs text-slate-400">Anda perlu menjawab semua benar (100%) untuk menandai tabel ini selesai.</p>
+          {!passed && feedbackText && (
+            <p className="text-xs text-slate-400">{feedbackText}</p>
           )}
-          {isSeq && passed && (
-            <p className="text-xs text-green-400">✅ Tabel {tableNum} berhasil dihafal!</p>
+          {passed && feedbackText && (
+            <p className="text-xs text-green-400">{feedbackText}</p>
           )}
 
           <div className="flex flex-col gap-2 mt-2">
-            {isSeq && passed && tableNum < 10 && (
+            {isAddSub && levelNum !== undefined && passed && levelNum < 5 && (
+              <Link
+                href={`/drill/${moduleId}?level=${levelNum + 1}`}
+                className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-medium text-sm py-2.5 rounded-lg text-center transition-colors"
+              >
+                Lanjut ke Level {levelNames[levelNum]}
+              </Link>
+            )}
+            {!isAddSub && tableNum !== undefined && passed && tableNum < 10 && (
               <Link
                 href={`/drill/${moduleId}?table=${tableNum + 1}`}
                 className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-medium text-sm py-2.5 rounded-lg text-center transition-colors"
@@ -162,7 +202,14 @@ function DrillContent() {
             )}
             <button
               onClick={() => {
-                setQuestions(generateQuestions(moduleId, isSeq ? 10 : 50, tableNum, rangeParam));
+                let qCount = 50;
+                if (isAddSub) {
+                  qCount = levelNum !== undefined ? 10 : 50;
+                } else {
+                  qCount = tableNum !== undefined ? 10 : 50;
+                }
+                const range = isAddSub && levelNum !== undefined ? levelsMapping[levelNum - 1] : (isAddSub ? "all" : rangeParam);
+                setQuestions(generateQuestions(moduleId, qCount, tableNum, range));
                 setCurrentIndex(0);
                 setCorrectCount(0);
                 setDone(false);
@@ -194,7 +241,10 @@ function DrillContent() {
           <ArrowLeft className="h-3.5 w-3.5" /> Keluar
         </Link>
         <span>
-          {tableNum !== undefined ? `Tabel ${tableNum}` : "Acak"} — Soal {currentIndex + 1}/{questions.length}
+          {isAddSub
+            ? (levelNum !== undefined ? `Level ${levelNames[levelNum - 1]}` : "Acak")
+            : (tableNum !== undefined ? `Tabel ${tableNum}` : "Acak")
+          } — Soal {currentIndex + 1}/{questions.length}
         </span>
       </div>
 

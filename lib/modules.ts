@@ -8,15 +8,15 @@ export interface Module {
 export const MODULES: Module[] = [
   {
     id: "penjumlahan",
-    title: "Penjumlahan Dasar (1 - 10)",
-    description: "Kuasai operasi penjumlahan angka 1 sampai 10 secara teratur dan acak.",
-    topics: ["Tabel Penjumlahan 1-10", "Latihan Berurutan", "Latihan Campuran Acak"]
+    title: "Penjumlahan",
+    description: "Kuasai operasi penjumlahan dari tingkat satuan, puluhan, hingga ratusan ribu.",
+    topics: ["Level Satuan", "Level Puluhan", "Level Ratusan", "Level Ribuan", "Level Ratus Ribuan", "Latihan Campuran Acak"]
   },
   {
     id: "pengurangan",
-    title: "Pengurangan Dasar (1 - 10)",
-    description: "Kuasai operasi pengurangan angka 1 sampai 10 secara teratur dan acak.",
-    topics: ["Tabel Pengurangan 1-10", "Latihan Berurutan", "Latihan Campuran Acak"]
+    title: "Pengurangan",
+    description: "Kuasai operasi pengurangan dari tingkat satuan, puluhan, hingga ratusan ribu.",
+    topics: ["Level Satuan", "Level Puluhan", "Level Ratusan", "Level Ribuan", "Level Ratus Ribuan", "Latihan Campuran Acak"]
   },
   {
     id: "perkalian",

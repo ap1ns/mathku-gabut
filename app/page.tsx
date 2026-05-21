@@ -34,6 +34,9 @@ export default function Home() {
         {MODULES.map((mod) => {
           const modProgress = mounted ? progress[mod.id] : null;
           const completedCount = modProgress?.completedTables?.length ?? 0;
+          const isAddSub = mod.id === "penjumlahan" || mod.id === "pengurangan";
+          const maxLimit = isAddSub ? 5 : 10;
+          const statusLabel = isAddSub ? "Level selesai" : "Tabel selesai";
 
           return (
             <Link
@@ -49,7 +52,7 @@ export default function Home() {
                 <p className="text-xs text-slate-400 leading-relaxed">{mod.description}</p>
                 {mounted && (
                   <span className="text-[11px] text-slate-500 mt-1">
-                    Tabel selesai: {completedCount} / 10
+                    {statusLabel}: {completedCount} / {maxLimit}
                   </span>
                 )}
               </div>
